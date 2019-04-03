@@ -1,0 +1,24 @@
+include header.pug
+if status == 'SUCCESS'
+    h1
+     div 注册成功! 
+     div
+        em#time  
+     div 秒内返回首页
+else if status == 'USERNAME_USED'
+     |注册失败,用户名被占用
+script.
+    function a() {
+        var time = 3;
+        var p = document.querySelector("#time");
+        p.innerHTML = time
+        var set = setInterval(function() {
+            time--
+            p.innerHTML = time
+            if(time === 0) {
+              location.href = "/"
+              clearInterval(set);
+            }
+        }, 1000);
+    } 
+    a()

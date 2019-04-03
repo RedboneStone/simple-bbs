@@ -1,0 +1,13 @@
+include header.pug
+
+if post
+    div 
+     h1 #{post.title}
+     small 楼主: 
+        |
+        a(href="/user/#{post.owner}")= post.owner  
+        br
+        br
+     article= post.content
+else 
+    h1 查无此贴 
