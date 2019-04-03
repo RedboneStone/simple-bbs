@@ -61,14 +61,18 @@ app.use((req,res,next)=>{
     // if(req.signedCookies.user){
     //     req.user = users.find(it => it.name == req.signedCookies.user)
     // }
-    db.get('SELECT * FROM users WHERE rowid = " ' + req.signedCookies.user + '"',(err,user)=>{
+    if(req.signedCookies.loginUser){
+    db.get('SELECT * FROM users WHERE name = ? ',req.signedCookies.loginUser,(err,user)=>{
         if(err){
             console.log(err)
         } else{
-        req.user = user
-        next()
+            req.user = user
+            next()
         }
     })
+    } else{
+        next()
+    }
 })// 在浏览器请求 根目录页面前  查看请求头是否携带 cookie  判断 我们的数据库里是否有cookie的用户
 
 
@@ -125,21 +129,32 @@ app.route('/register')
     })
 })
 .post((req,res,next) => {
-    if(users.find(it => it.name == req.body.name ) == null){
-        req.body.id = users[users.length - 1].id + 1
-        users.push(req.body)
-        res.cookie('user',req.body,{
-            signed: true
-        })
-        res.render('register_success.pug',{
-            status: 'SUCCESS',
-            user: req.body
-        })
-    } else {
-        res.render('register_success.pug',{
-            status: 'USERNAME_USED'
-        })
-    }
+    db.run('INSERT INTO users(name,password) VALUES (?,?)',req.body.name,req.body.password,(err)=>{
+        if(err){
+            //1. name 在数据库里被设计成  primary key  所以不会重复   
+            // 2  表的每一行  都有一个 隐藏的 rowid 会自动增加
+
+            res.render('register_success.pug',{
+                status: 'USERNAME_USED'
+            })
+        }else{
+            res.cookie('loginUser',req.body.name,{
+                signed: true,
+
+            })
+            res.render('register_success.pug',{
+                status: 'SUCCESS',
+                user: req.body
+            })
+        }
+    })
+    // if(users.find(it => it.name == req.body.name ) == null){
+    //     req.body.id = users[users.length - 1].id + 1
+    //     users.push(req.body)
+ 
+    // } else {
+       
+    // }
    
 })
 
@@ -158,27 +173,43 @@ app.route('/login')
 
 })
 .post((req,res,next) => {
-    var user = users.find(it => it.name == req.body.name )
-    if(user){
-        if(user.password == req.body.password){
-            res.cookie('user',user.name,{
+   db.get('SELECT * FROM users WHERE name == ? AND password =?' ,req.body.name,req.body.password,(err,user)=>{
+       if(err){
+           next(err)
+       } else {
+           if(user){
+            res.cookie('loginUser',user.name,{
                 expires: new Date(Date.now()+ 86400000),
                 signed: true
             })//设置cookie  
             res.redirect('/')
-        }else {
-            res.send('密码错误')
-        }
-    }
-    else {
-        res.send('用户名不存在')
-    }
+           }else {
+             res.send('用户名或密码错误')       
+           }
+       }
+   })
+
+    // var user = users.find(it => it.name == req.body.name )
+    // if(user){
+    //     if(user.password == req.body.password){
+    //         res.cookie('user',user.name,{
+    //             expires: new Date(Date.now()+ 86400000),
+    //             signed: true
+    //         })//设置cookie  
+    //         res.redirect('/')
+    //     }else {
+    //         res.send('密码错误')
+    //     }
+    // }
+    // else {
+    //     res.send('用户名不存在')
+    // }
 })
 
 
 //登出
 app.get('/logout',(req,res,next) => {
-    res.clearCookie('user')
+    res.clearCookie('loginUser')
     res.redirect('/')
 })
 
